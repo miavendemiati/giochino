@@ -1,103 +1,101 @@
 import arcade
 import random
-import math
+import os
 
-larghezza = 1024
-altezza = 768
-titolo = "solitario"
+LARGHEZZA = 1024
+ALTEZZA = 768
+TITOLO = "Solitario - TEST"
 
+
+class Carta(arcade.Sprite):
+    def __init__(self, seme, valore, front_filename):
+        super().__init__(front_filename, scale=0.25)
+
+        self.seme = seme
+        self.valore = valore
+
+        self.front_texture = arcade.load_texture(front_filename)
+        self.back_texture = arcade.load_texture(
+            "assets/carte/solitaire/individuals/card_back.png"
+        )
+
+        self.scoperta = False
+        self.texture = self.back_texture
+
+def crea_mazzo():
+    semi = ["heart", "diamond", "club", "spade"]
+    nomi = {1: "1", 2:"2", 3:"3", 4:"4", 5:"5", 6:"6", 7:"7", 8:"8", 9:"9", 10:"10", 11: "11", 12: "12", 13: "13"}
+
+    mazzo = []
+
+    for seme in semi:
+        for valore in range(1, 14):
+            nome = nomi.get(valore, str(valore))
+            filename = f"assets/carte/solitaire/individuals/{valore}_{seme}.png"
+            carta = Carta(seme, valore, filename)
+            mazzo.append(carta)
+    print(filename)
+
+    random.shuffle(mazzo)
+    return mazzo
 
 
 class Game(arcade.Window):
-    def __init__(self, larghezza, altezza, titolo):
-        super().__init__(larghezza, altezza, titolo)
+    def __init__(self):
+        super().__init__(LARGHEZZA, ALTEZZA, TITOLO)
         arcade.set_background_color(arcade.color.AMAZON)
-        self.background = None
-        self.lista_background = arcade.SpriteList()
-        self.carte = None
-        self.mat = None
         self.lista_carte = arcade.SpriteList()
-        self.lista_mat = arcade.SpriteList()
+        self.carta_selezionata = None
+        self.offset_x = 0
+        self.offset_y = 0
         
-        self.setup()
-        
-    def sfondo(self):
-        arcade.set_background_color(arcade.color.AMAZON)
+    def on_mouse_press(self, x, y, button, modifiers):
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            for carta in reversed(self.lista_carte):
+                if carta.collides_with_point((x, y)) and carta.scoperta:
+                    self.carta_selezionata = carta
+                    
+                    self.offset_x = carta.center_x - x
+                    self.offset_y = carta.center_y - y
+                    
+                    carta.remove_from_sprite_lists()
+                    self.lista_carte.append(carta)
+                    
+                    break
+                
+    def on_mouse_motion(self, x, y, dx, dy):
+        if self.carta_selezionata:
+            self.carta_selezionata.center_x = x + self.offset_x
+            self.carta_selezionata.center_y = y + self.offset_y
     
+    def on_mouse_release(self, x, y, button, modifiers):
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            self.carta_selezionata = None               
+                
     def setup(self):
-        self.sfondo()
-               
+        mazzo = crea_mazzo()
+
+        x = 100
+        y = 500
+
+        for carta in mazzo[:52]:
+            carta.center_x = x
+            carta.center_y = y
+            carta.scoperta = True
+            carta.texture = carta.front_texture
+            self.lista_carte.append(carta)
+            x += 80
+
     def on_draw(self):
         self.clear()
         self.lista_carte.draw()
-        self.lista_mat.draw()
-        
-    def on_mouse_press(self, x, y, button, key_modifiers):
-        pass
-    
-    def on_mouse_release(self, x: float, y: float, dx: float, dy: float):
-        pass
-    
-class Carta(arcade.Sprite):
-    def __init__(self, seme, valore, filename, scala = 0.5):
-        super().__init__(filename, scala)
-        self.seme = seme
-        self.valore = valore
-        
-        self.front_texture = arcade.load_texture
-        self.back_texture = arcade.load_texture("giochino/assets/card_back.png")
-        
-        self.scoperta = False
-        self.texture = self.back_texture
-    
-    def colore(self):
-        if self.seme in ["cuori", "quadri"]:
-            return "rosso"
-        return "nero"
-    
-def crea_mazzo():
-    semi = ["cuori", "quadri", "fiori", "picche"]
-    nomi = {
-        1: "asso",
-        11: "jack",
-        12: "regina",
-        13: "re"
-    }
-        
-    mazzo = []
-    
-    for seme in semi:
-        for valore in range(1, 14):
-                nome = nomi.get(valore, str(valore))
-                filename = f"assets/carte/{nome}_{seme}.png"
-                carta = Carta(seme, valore, filename)
-                mazzo.append(carta)
-    
-    random.shuffle(mazzo)
-    return mazzo
-    
-def setup(self):
-    self.sfondo()
-    self.lista_carte = arcade.SpriteList()
-    
-    mazzo = crea_mazzo()   
-    print(len(mazzo)) 
-    
-    x = 100
-    y = 600
-    
-    for carta in mazzo:
-        carta.center_x = x
-        carta.center_y = y
-        self.lista_carte.apend(carta)
-        x += 0.5
-    
-    
+
+
 def main():
-        Game(larghezza, altezza, titolo)
-        arcade.run()
-        
+    game = Game()
+    game.setup()
+    arcade.run()
+
+
 if __name__ == "__main__":
-        main()
-        
-        
+    main()
