@@ -9,7 +9,7 @@ TITOLO = "Solitario - TEST"
 
 class Carta(arcade.Sprite):
     def __init__(self, seme, valore, front_filename):
-        super().__init__(front_filename, scale=0.25)
+        super().__init__(front_filename, scale=0.5)
 
         self.seme = seme
         self.valore = valore
@@ -48,6 +48,11 @@ class Game(arcade.Window):
         self.carta_selezionata = None
         self.offset_x = 0
         self.offset_y = 0
+        self.colonne = []
+        self.spazio_x_colonne = 140
+        self.start_x_colonne = 100
+        self.start_y_colonne = 650
+        self.spazio_y_carte = 30
         
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -73,8 +78,33 @@ class Game(arcade.Window):
             self.carta_selezionata = None               
                 
     def setup(self):
+        self.lista_carte = arcade.SpriteList()
+        self.colonne = []
+        
         mazzo = crea_mazzo()
 
+        for i in range(7):
+            colonna = []
+            
+            for j in range(i + 1):
+                carta = mazzo.pop()
+                
+                carta.center_x = self.start_x_colonne + i * self.spazio_x_colonne
+                carta.center_y = self.start_y_colonne - j * self.spazio_y_carte
+                
+                if j == i:
+                    carta.scoperta = True
+                    carta.texture = carta.front_texture
+                    
+                else:
+                    carta.scoperta = False
+                    carta.texture = carta.back_texture
+                
+                self.lista_carte.append(carta)
+                colonna.append(carta)
+                
+            self.colonne.append(colonna)
+                
         x = 100
         y = 500
 
