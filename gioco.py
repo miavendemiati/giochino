@@ -4,7 +4,7 @@ import os
 
 LARGHEZZA = 1024
 ALTEZZA = 768
-TITOLO = "Solitario - TEST"
+TITOLO = "Solitario"
 
 
 class Carta(arcade.Sprite):
@@ -54,11 +54,22 @@ class Game(arcade.Window):
         self.start_y_colonne = 650
         self.spazio_y_carte = 30
         
+    def trova_posizione(self, carta):
+        for i, colonna in enumerate(self.colonne):
+            if carta in colonna:
+                indice_carta = colonna.index(carta)
+                return i, indice_carta
+            
+        return None, None
+        
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
             for carta in reversed(self.lista_carte):
                 if carta.collides_with_point((x, y)) and carta.scoperta:
                     self.carta_selezionata = carta
+                    
+                    col, idx = self.trova_posizione(carta)
+                    print(col, idx)
                     
                     self.offset_x = carta.center_x - x
                     self.offset_y = carta.center_y - y
@@ -67,7 +78,7 @@ class Game(arcade.Window):
                     self.lista_carte.append(carta)
                     
                     break
-                
+                            
     def on_mouse_motion(self, x, y, dx, dy):
         if self.carta_selezionata:
             self.carta_selezionata.center_x = x + self.offset_x
@@ -78,6 +89,7 @@ class Game(arcade.Window):
             self.carta_selezionata = None               
                 
     def setup(self):
+        print("inizio setup")
         self.lista_carte = arcade.SpriteList()
         self.colonne = []
         
@@ -119,13 +131,18 @@ class Game(arcade.Window):
     def on_draw(self):
         self.clear()
         self.lista_carte.draw()
+    
+    print("fine setup")
 
 
 def main():
+    print("PARTITO")
     game = Game()
+    print("CREATO")
     game.setup()
+    print("SETUP FATTO")
     arcade.run()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     main()
