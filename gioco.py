@@ -70,24 +70,43 @@ class Game(arcade.Window):
                     
                     col, idx = self.trova_posizione(carta)
                     print(col, idx)
+                    self.pile_selezionata = self.colonne[col][idx:]
+                    self.colonna_originale = col
                     
-                    self.offset_x = carta.center_x - x
-                    self.offset_y = carta.center_y - y
+                    self.offset_x = self.pile_selezionata[0].center_x - x
+                    self.offset_y = self.pile_selezionata[0].center_y - y
                     
-                    carta.remove_from_sprite_lists()
-                    self.lista_carte.append(carta)
+                    for carta in self.pile_selezionata:          
+                        carta.remove_from_sprite_lists()
+                        self.lista_carte.append(carta)
                     
                     break
                             
     def on_mouse_motion(self, x, y, dx, dy):
-        if self.carta_selezionata:
-            self.carta_selezionata.center_x = x + self.offset_x
-            self.carta_selezionata.center_y = y + self.offset_y
+        if self.pile_selezionata:
+            for i, carta in enumerate(self.pile_selezionata):
+                carta.center_x = x + self.offset_x
+                carta.center_y = (y + self.offset_y) - i * self.spazio_y_carte
     
     def on_mouse_release(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
-            self.carta_selezionata = None               
-                
+            self.carta_selezionata = None      
+            return
+        if not self.pile_selezionata:
+            return
+        
+        col_dest = int((x - self.start_x_colonne + self.spazio_x_colonne // 2) / self.spazio_x_colonne)         
+        col_dest = max(0, min(6, col_dest))  # limita tra 0 e 6 colonne
+        self.colonne[self.colonna_originale] = self.colonne[self.colonna_originale][:-len(self.pile_selezionata)]
+        self.colonne[col_dest].extend(self.pile_selezionata)
+        
+        for i, carta in enumerate(self.colonne[col_dest][-len(self.pile_selezionata):]):
+            carta.center_x = self.start_x_colonne + col_dest * self.spazio_x_colonne
+            carta.center_y = self.start_y_colonne - (len(self.colonne[col_dest]) - len(self.pile_selezionata) + i) * self.spazio_y_carte
+        
+        self.pile_selezionata = None
+        self.colonna_originale = None
+
     def setup(self):
         print("inizio setup")
         self.lista_carte = arcade.SpriteList()
@@ -120,13 +139,13 @@ class Game(arcade.Window):
         x = 100
         y = 500
 
-        for carta in mazzo[:52]:
-            carta.center_x = x
-            carta.center_y = y
-            carta.scoperta = True
-            carta.texture = carta.front_texture
-            self.lista_carte.append(carta)
-            x += 80
+        # for carta in mazzo[:52]:
+        #     carta.center_x = x
+        #     carta.center_y = y
+        #     carta.scoperta = True
+        #     carta.texture = carta.front_texture
+        #     self.lista_carte.append(carta)
+        #     x += 80
 
     def on_draw(self):
         self.clear()
