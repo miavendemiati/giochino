@@ -3,7 +3,7 @@ import random
 import os
 
 LARGHEZZA = 1024
-ALTEZZA = 768
+ALTEZZA = 700
 TITOLO = "Solitario"
 
 
@@ -59,6 +59,8 @@ class Game(arcade.Window):
             if carta in colonna:
                 indice_carta = colonna.index(carta)
                 return i, indice_carta
+            if carta in self.scarti:
+                return 7, self.scarti.index(carta)
             
         return None, None
         
@@ -72,6 +74,8 @@ class Game(arcade.Window):
                     print(col, idx)
                     self.pile_selezionata = self.colonne[col][idx:]
                     self.colonna_originale = col
+                    if col == 7:
+                        self.pile_selezionata = self.scarti[idx:]
                     
                     self.offset_x = self.pile_selezionata[0].center_x - x
                     self.offset_y = self.pile_selezionata[0].center_y - y
@@ -89,21 +93,33 @@ class Game(arcade.Window):
                     
                     break
 
-            if self.mazzo_pesca:
-                cima = self.mazzo_pesca[-1]
-                if cima.collides_with_point((x, y)):
+            print(len(self.mazzo_pesca))
+            if 60 < x < 140 and 60 < y < 140:
+                if self.mazzo_pesca:
                     carta = self.mazzo_pesca.pop()
 
                     carta.scoperta = True
                     carta.texture = carta.front_texture
 
                     self.scarti.append(carta)
+                    
+                    carta.remove_from_sprite_lists()
+                    self.lista_carte.append(carta)
 
-                    carta.center_x = 200 + len(self.scarti)*0.5
-                    carta.center_y = 100 - len(self.scarti)*0.5
+                    carta.center_x = 200
+                    carta.center_y = 100
 
                     if carta not in self.lista_carte:
                         self.lista_carte.append(carta)
+                else:
+                    self.mazzo_pesca = self.scarti[::-1]
+                    self.scarti = []
+                    
+                    for carta in self.mazzo_pesca:
+                        carta.scoperta =  False
+                        carta.texture = carta.back_texture
+                        carta.center_x = 100
+                        carta.center_y = 100
                             
     def on_mouse_motion(self, x, y, dx, dy):
         if self.pile_selezionata:
@@ -117,6 +133,11 @@ class Game(arcade.Window):
 
         if not self.pile_selezionata:
             return
+        
+        if col_dest > 6:  # se proviene dagli scarti
+            self.scarti = self.scarti[:-len(self.pile_selezionata)]
+        else:
+            self.colonne[self.colonna_originale] = self.colonne[self.colonna_originale][:-len(self.pile_selezionata)]
         
         col_dest = int((x - self.start_x_colonne + self.spazio_x_colonne // 2) / self.spazio_x_colonne)         
         col_dest = max(0, min(6, col_dest))  # limita tra 0 e 6 colonne
@@ -170,25 +191,15 @@ class Game(arcade.Window):
             self.colonne.append(colonna)
         
         self.mazzo_pesca = mazzo
-        self.lista_mazzo = arcade.SpriteList()
+        
         
         for i, carta in enumerate(self.mazzo_pesca):
             carta.scoperta = False
             carta.texture = carta.back_texture
             carta.center_x = 100
             carta.center_y = 100
-            self.lista_mazzo.append(carta)
-            if carta not in self.lista_carte:
-                self.lista_carte.append(carta)
-
-        if self.mazzo_pesca:
-            cima = self.mazzo_pesca.pop()
-            cima.scoperta = True
-            cima.texture = cima.front_texture
-            self.scarti.append(cima)
-            
-        cima.center_x = 100
-        cima.center_y = 100
+            carta.remove_from_sprite_lists()
+            self.lista_carte.append(carta)
 
         x = 100
         y = 500
