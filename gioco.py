@@ -71,58 +71,35 @@ class Game(arcade.Window):
     def on_mouse_press(self, x, y, button, modifiers):
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
-        
-        if 60 < x < 140 and 60 < y < 140:
-            if self.mazzo_pesca:
-                carta = self.mazzo_pesca.pop()
-                carta.scoperta = True
-                carta.texture = carta.front_texture
-            
-                self.scarti.append(carta)
-            
-                carta.center_x = 200
-                carta.center_y = 100
-            
-                carta.remove_from_sprite_lists()
-                self.lista_carte.append(carta)
-            else:
-                self.mazzo_pesca = self.scarti[::-1]
-                self.scarti = []
-            
-                for carta in self.mazzo_pesca:
-                    carta.scoperta = False
-                    carta.texture = carta.back_texture
-                    carta.center_x = 100
-                    carta.center_y = 100
-                
-            return
     
         for carta in reversed(self.lista_carte):
             if carta.collides_with_point((x, y)) and carta.scoperta:
-            
                 col, idx = self.trova_posizione(carta)
-            
                 if col is None:
                     continue
             
                 self.colonna_originale = col
-            
+
                 if col == 7:
                     if idx != len(self.scarti) - 1:
                         return
                     self.pile_selezionata = [self.scarti[idx]]
                 else:
-                    self.pile_selezionata = self.colonne[col][idx:]
-                
+                    sequenza = self.colonne[col][idx:]
+                    if self.sequenza_valida(sequenza):
+                        self.pile_selezionata = sequenza
+                    else:
+                        return
+            
                 self.offset_x = self.pile_selezionata[0].center_x - x
                 self.offset_y = self.pile_selezionata[0].center_y - y
-            
+
                 for c in self.pile_selezionata:
                     c.remove_from_sprite_lists()
                     self.lista_carte.append(c)
-                
+            
                 return
-           
+            
     def on_mouse_motion(self, x, y, dx, dy):
         if self.pile_selezionata:
             for i, carta in enumerate(self.pile_selezionata):
@@ -160,7 +137,56 @@ class Game(arcade.Window):
                     
         self.carta_selezionata = None
         self.colonna_originale = None
-        self.pile_selezionata = None
+        
+        carta_base = self.pile_selezionata[0]
+        
+        if not self.mossa_valida(carta_base, self.colonne[col_dest]):
+            col = self.colonna_originale
+            
+            if col == 7:
+                self.scarti.extend(self.pile_selezionata)
+                for carta in self.scarti:
+                    carta.center_x = 200
+                    carta.center_y = 100
+            
+            else:
+                self.colonne[col].extend(self.pile_selezionata)
+                for i, carta in enumerate(self.colonne[col]):
+                    carta.center_x = self.start_x_colonne + col * self.spazio_x_colonne
+                    carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
+        
+            self.colonna_originale = None        
+            self.pile_selezionata = None
+            return
+        if self.colonna_originale == 7:
+            self.scarti = self.scarti[:-len(self.pile_selezionata)]
+        else:
+            self.colonne[self.colonna_originale] = self.colonne[self.colonna_originale][:-len(self.pile_selezionata)]
+            
+        self.colonne[col_dest].extend(self.pile_selezionata)
+        
+    def colore(self, carta):
+        if carta.seme in ["heart", "diamond"]:
+            return "rosso"
+        return "nero"
+    
+    def mossa_valida(self, carta, colonna_dest):
+        if not colonna_dest:
+            return carta.valore == 13
+        
+        top = colonna_dest[-1]
+        
+        return (
+            self.colore(carta) != self.colore(top) and
+            carta.valore == top.valore - 1
+        )    
+    def sequenza_valida(self, sequenza):
+        for i in range(len(sequenza)-1):
+            c1 = sequenza[i]
+            c2 = sequenza[i+1]
+            if self.colore(c1) == self.colore(c2) or c1.valore != c2.valore + 1:
+                return False
+        return True
 
     def setup(self):
         print("inizio setup")
