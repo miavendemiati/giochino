@@ -71,6 +71,18 @@ class Game(arcade.Window):
     def on_mouse_press(self, x, y, button, modifiers):
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        
+        if 50 < x < 150 and 50 < y < 150:
+            if self.mazzo_pesca:
+                carta = self.mazzo_pesca.pop()
+                carta.scoperta = True
+                carta.texture = carta.front_texture
+                carta.center_x = 200
+                carta.center_y = 100
+                self.scarti.append(carta)
+                carta.remove_from_sprite_lists()
+                self.lista_carte.append(carta)
+            return
     
         for carta in reversed(self.lista_carte):
             if carta.collides_with_point((x, y)) and carta.scoperta:
@@ -113,57 +125,54 @@ class Game(arcade.Window):
         if not self.pile_selezionata:
             return
         
-        col_dest = int((x - self.start_x_colonne + self.spazio_x_colonne // 2) / self.spazio_x_colonne)         
-        col_dest = max(0, min(6, col_dest))  # limita tra 0 e 6 colonne
+        col_dest = None
+        for i in range(7):
+            col_x = self.start_x_colonne + i * self.spazio_x_colonne
+            if abs(x - col_x) < self.spazio_x_colonne // 2:
+                col_dest = i
+                break
+
+        if col_dest is None:
+            col_dest = self.colonna_originale
+
+        carta_base =  self.pile_selezionata[0]
+        col_orig = self.colonna_originale
         
-        if self.colonna_originale == 7:
+        if not self.mossa_valida(carta_base, self.colonne[col_dest]):
+            if col_orig ==7:
+                self.scarti.extend(self.pile_selezionata)
+                for carta in self.scarti:
+                    carta.center_x = 200
+                    carta.center_y = 100
+            else:
+                self.colonne[col_orig].extend(self.pile_selezionata)
+                for i, carta in enumerate(self.colonne[col_orig]):
+                    carta.center_x = self.start_x_colonne + col_orig * self.spazio_x_colonne
+                    carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
+
+            self.pile_selezionata = None
+            self.colonna_originale = None
+            return
+
+        if col_orig == 7:
             self.scarti = self.scarti[:-len(self.pile_selezionata)]
         else:
-            self.colonne[self.colonna_originale] = self.colonne[self.colonna_originale][:-len(self.pile_selezionata)] 
-        
+            self.colonne[col_orig] = self.colonne[col_orig][:-len(self.pile_selezionata)]
+                
         self.colonne[col_dest].extend(self.pile_selezionata)
                
         for i, carta in enumerate(self.colonne[col_dest]):
             carta.center_x = self.start_x_colonne + col_dest * self.spazio_x_colonne
             carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
         
-        if self.colonna_originale != 7:
-            colonna = self.colonne[self.colonna_originale]
-            if len(colonna) >0:
-                ultima = colonna[-1]
-                if not ultima.scoperta:
-                    ultima.scoperta = True
-                    ultima.texture = ultima.front_texture
+        if col_orig != 7 and len(self.colonne[col_orig]) > 0:
+            ultima = self.colonne[col_orig][-1]
+            if not ultima.scoperta:
+                ultima.scoperta = True
+                ultima.texture = ultima.front_texture
                     
-        self.carta_selezionata = None
+        self.pile_selezionata = None
         self.colonna_originale = None
-        
-        carta_base = self.pile_selezionata[0]
-        
-        if not self.mossa_valida(carta_base, self.colonne[col_dest]):
-            col = self.colonna_originale
-            
-            if col == 7:
-                self.scarti.extend(self.pile_selezionata)
-                for carta in self.scarti:
-                    carta.center_x = 200
-                    carta.center_y = 100
-            
-            else:
-                self.colonne[col].extend(self.pile_selezionata)
-                for i, carta in enumerate(self.colonne[col]):
-                    carta.center_x = self.start_x_colonne + col * self.spazio_x_colonne
-                    carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
-        
-            self.colonna_originale = None        
-            self.pile_selezionata = None
-            return
-        if self.colonna_originale == 7:
-            self.scarti = self.scarti[:-len(self.pile_selezionata)]
-        else:
-            self.colonne[self.colonna_originale] = self.colonne[self.colonna_originale][:-len(self.pile_selezionata)]
-            
-        self.colonne[col_dest].extend(self.pile_selezionata)
         
     def colore(self, carta):
         if carta.seme in ["heart", "diamond"]:
