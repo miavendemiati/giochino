@@ -34,7 +34,6 @@ def crea_mazzo():
             filename = f"assets/carte/solitaire/individuals/{valore}_{seme}.png"
             carta = Carta(seme, valore, filename)
             mazzo.append(carta)
-    print(carta.seme, carta.valore)
 
     random.shuffle(mazzo)
     return mazzo
@@ -56,7 +55,8 @@ class Game(arcade.Window):
         self.pile_selezionata = None
         self.colonna_originale = None
         self.scarti = []
-        
+        self.case = [[] for _ in range(4)] # 4 liste vuote per i semi
+
     def trova_posizione(self, carta):
         for i, colonna in enumerate(self.colonne):
             if carta in colonna:
@@ -77,12 +77,20 @@ class Game(arcade.Window):
                 carta = self.mazzo_pesca.pop()
                 carta.scoperta = True
                 carta.texture = carta.front_texture
-                carta.center_x = 200
+                carta.center_x = 220
                 carta.center_y = 100
                 self.scarti.append(carta)
                 carta.remove_from_sprite_lists()
                 self.lista_carte.append(carta)
-            return
+            else:
+                for carta in reversed(self.scarti):
+                    carta.scoperta = False
+                    carta.texture = carta.back_texture
+                    carta.center_x = 100
+                    carta.center_y = 100
+                    self.mazzo_pesca.append(carta)
+                self.scarti = []
+            return   
     
         for carta in reversed(self.lista_carte):
             if carta.collides_with_point((x, y)) and carta.scoperta:
@@ -119,57 +127,75 @@ class Game(arcade.Window):
                 carta.center_y = (y + self.offset_y) - i * self.spazio_y_carte
     
     def on_mouse_release(self, x, y, button, modifiers):
-        if button != arcade.MOUSE_BUTTON_LEFT:
+        if button != arcade.MOUSE_BUTTON_LEFT or not self.pile_selezionata:
             return
 
-        if not self.pile_selezionata:
-            return
-        
         col_dest = None
-        for i in range(7):
-            col_x = self.start_x_colonne + i * self.spazio_x_colonne
-            if abs(x - col_x) < self.spazio_x_colonne // 2:
-                col_dest = i
+        casa_dest = None
+        mossa_effettuata = False
+        carta_base = self.pile_selezionata[0]
+        col_orig = self.colonna_originale
+
+        for i in range(4):
+            casa_x = 550 + i * 120  # Spostate più a destra
+            casa_y = 100
+            if abs(x - casa_x) < 40 and abs(y - casa_y) < 50:
+                casa_dest = i
                 break
 
-        if col_dest is None:
-            col_dest = self.colonna_originale
+        if casa_dest is None:
+            for i in range(7):
+                col_x = self.start_x_colonne + i * self.spazio_x_colonne
+                if abs(x - col_x) < self.spazio_x_colonne // 2:
+                    col_dest = i
+                    break
 
-        carta_base =  self.pile_selezionata[0]
-        col_orig = self.colonna_originale
-        
-        if not self.mossa_valida(carta_base, self.colonne[col_dest]):
-            if col_orig ==7:
-                self.scarti.extend(self.pile_selezionata)
-                for carta in self.scarti:
-                    carta.center_x = 200
-                    carta.center_y = 100
-            else:
-                self.colonne[col_orig].extend(self.pile_selezionata)
-                for i, carta in enumerate(self.colonne[col_orig]):
-                    carta.center_x = self.start_x_colonne + col_orig * self.spazio_x_colonne
-                    carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
-
-            self.pile_selezionata = None
-            self.colonna_originale = None
-            return
-
-        if col_orig == 7:
-            self.scarti = self.scarti[:-len(self.pile_selezionata)]
-        else:
-            self.colonne[col_orig] = self.colonne[col_orig][:-len(self.pile_selezionata)]
+        if casa_dest is not None and len(self.pile_selezionata) == 1:
+            if self.mossa_valida_casa(carta_base, casa_dest):
+                # Rimuovi dalla sorgente
+                if col_orig == 7: self.scarti.pop()
+                else: self.colonne[col_orig].pop()
                 
-        self.colonne[col_dest].extend(self.pile_selezionata)
-               
-        for i, carta in enumerate(self.colonne[col_dest]):
-            carta.center_x = self.start_x_colonne + col_dest * self.spazio_x_colonne
-            carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
-        
-        if col_orig != 7 and len(self.colonne[col_orig]) > 0:
-            ultima = self.colonne[col_orig][-1]
-            if not ultima.scoperta:
-                ultima.scoperta = True
-                ultima.texture = ultima.front_texture
+                # Aggiungi alla casa
+                self.case[casa_dest].append(carta_base)
+                carta_base.center_x = 550 + casa_dest * 120
+                carta_base.center_y = 100
+                
+                # Scopri carta sotto
+                if col_orig != 7 and self.colonne[col_orig]:
+                    u = self.colonne[col_orig][-1]
+                    u.scoperta = True
+                    u.texture = u.front_texture
+                
+                self.pile_selezionata = None
+                self.colonna_originale = None
+                return # Mossa completata con successo!
+
+        if col_dest is not None and self.mossa_valida(carta_base, self.colonne[col_dest]):
+            if col_orig == 7:
+                self.scarti.pop()
+            else:
+                for _ in self.pile_selezionata:
+                    self.colonne[col_orig].pop()
+                if self.colonne[col_orig]:
+                    u = self.colonne[col_orig][-1]
+                    u.scoperta = True
+                    u.texture = u.front_texture
+
+            self.colonne[col_dest].extend(self.pile_selezionata)
+            mossa_effettuata = True
+        else:
+            # Se fallisce tutto, torna all'origine
+            col_dest = col_orig
+
+        if col_dest == 7:
+            for carta in self.pile_selezionata:
+                carta.center_x = 220
+                carta.center_y = 100
+        else:
+            for i, carta in enumerate(self.colonne[col_dest]):
+                carta.center_x = self.start_x_colonne + col_dest * self.spazio_x_colonne
+                carta.center_y = self.start_y_colonne - i * self.spazio_y_carte
                     
         self.pile_selezionata = None
         self.colonna_originale = None
@@ -189,6 +215,15 @@ class Game(arcade.Window):
             self.colore(carta) != self.colore(top) and
             carta.valore == top.valore - 1
         )    
+    
+    def mossa_valida_casa(self, carta, indice_casa):
+        pila = self.case[indice_casa]
+        if not pila:
+            return carta.valore == 1 # Solo l'Asso può iniziare
+        
+        top = pila[-1]
+        return carta.seme == top.seme and carta.valore == top.valore + 1
+    
     def sequenza_valida(self, sequenza):
         for i in range(len(sequenza)-1):
             c1 = sequenza[i]
@@ -251,9 +286,34 @@ class Game(arcade.Window):
 
     def on_draw(self):
         self.clear()
+        
+        # Disegniamo i bordi per le 4 case (Foundation) di fianco al mazzo
+        # Il mazzo è a X=100, Y=100. Mettiamo le case a partire da X=350
+        for i in range(4):
+            casa_x = 550 + i * 120 # Cambiato da 350 a 550
+            casa_y = 100
+            
+            punti = [
+                (casa_x - 35, casa_y - 50),
+                (casa_x + 35, casa_y - 50),
+                (casa_x + 35, casa_y + 50),
+                (casa_x - 35, casa_y + 50),
+                (casa_x - 35, casa_y - 50)
+            ]
+            try:
+                arcade.draw_line_strip(punti, arcade.color.BLACK, 2)
+            except:
+                # Fallback se draw_line_strip non va
+                for j in range(4):
+                    arcade.draw_line(punti[j][0], punti[j][1], punti[j+1][0], punti[j+1][1], arcade.color.BLACK, 2)
+
+        # Bordo per il mazzo di pesca (X=100, Y=100)
+        try:
+            arcade.draw_line_strip([(65, 50), (135, 50), (135, 150), (65, 150), (65, 50)], arcade.color.BLACK, 2)
+        except:
+            pass
+
         self.lista_carte.draw()
-    
-    print("fine setup")
 
 
 def main():
